@@ -19,12 +19,21 @@ def validate_8digits(number):
         raise ValidationError("Account numbers must be 8 digits. Yours has %i"%len(str(number)))
 
 class Account(models.Model):
-    number = models.PositiveIntegerField(help_text="Account number, 8 digits",unique=True,validators=[validate_8digits])
+    number = models.PositiveIntegerField(help_text="Account number, 8 digits",unique=True,blank=True,null=False,validators=[validate_8digits])
     currency = models.CharField(max_length=3,choices=ALLOWED_CURRENCIES)
     creation_date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return "Account number %i"%self.number
+
+    def save(self):
+        if not self.number:
+            # Give sequential IDs automatically
+            try:
+                self.number = Account.objects.latest('number').number+1
+            except Account.DoesNotExist:
+                self.number = 1
+        super(Account, self).save()
 
 class Transaction(models.Model):
     """

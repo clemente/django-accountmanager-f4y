@@ -10,3 +10,12 @@ class AccountResource(ModelResource):
         queryset = Account.objects.all()
         resource_name = 'account'
         authorization = Authorization() # FIXME use token authorization
+        always_return_data = True
+
+    def dehydrate(self, bundle):
+        """Create the appropriate response, e.g. include an "error" attribute in the response"""
+        # TODO add nice error handling (and set error=True)
+        bundle.data['request_ip'] = bundle.request.META.get('REMOTE_ADDR')
+        orig_data=dict(bundle.data)
+        bundle.data={'error':False, 'data':orig_data}
+        return bundle

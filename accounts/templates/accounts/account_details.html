@@ -1,0 +1,10 @@
+
+<h1>Transactions for account {{account.number}}</h1>
+
+<ul>
+{% for tr in transactions %}
+<li>{{tr}}</li>
+{% empty %}
+<li>None</li>
+{% endfor %}
+</ul>

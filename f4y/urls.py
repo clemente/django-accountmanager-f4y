@@ -16,7 +16,7 @@ Including another URLconf
 from django.conf.urls import url, include
 from django.contrib import admin
 from accounts.api import AccountResource, TransactionResource
-from accounts.views import AccountListView
+from accounts.views import AccountListView, account_and_transactions
 
 account_resource = AccountResource()
 transaction_resource = TransactionResource()
@@ -28,4 +28,5 @@ urlpatterns = [
     url(r'^api/', include(transaction_resource.urls)),
 
     url(r'^$', AccountListView.as_view(), name='account-list'),
+    url(r'^account/(?P<number>\d{8})/$', account_and_transactions, name='account-detail'),
 ]

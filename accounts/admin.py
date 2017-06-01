@@ -6,7 +6,7 @@ class AccountAdmin(admin.ModelAdmin):
 
 
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'date', 'source_account', 'dest_account', 'source_amount', 'dest_amount')
+    list_display = ('id', 'op_type', 'date', 'source_account', 'dest_account', 'source_amount', 'dest_amount')
     def source_account(self,t):
         return t.source_acc.number if t.source_acc else None
     def dest_account(self,t):

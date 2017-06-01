@@ -15,12 +15,14 @@ Including another URLconf
 """
 from django.conf.urls import url, include
 from django.contrib import admin
-from accounts.api import AccountResource
+from accounts.api import AccountResource, TransactionResource
 
 account_resource = AccountResource()
+transaction_resource = TransactionResource()
 
 urlpatterns = [
     url(r'^admin/', admin.site.urls),
 
     url(r'^api/', include(account_resource.urls)),
+    url(r'^api/', include(transaction_resource.urls)),
 ]

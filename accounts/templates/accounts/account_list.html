@@ -1,0 +1,11 @@
+<h1>Accounts</h1>
+{% for account in object_list %}
+<h2>Account {{ account.number }}</h2>
+<p>Currency: {{account.currency}}</p>
+{# <p>{{ account.creation_date|date }}</p> #}
+
+{% empty %}
+<h2>No accounts.</h2>
+{% endfor %}
+
+

@@ -16,6 +16,7 @@ Including another URLconf
 from django.conf.urls import url, include
 from django.contrib import admin
 from accounts.api import AccountResource, TransactionResource
+from accounts.views import AccountListView
 
 account_resource = AccountResource()
 transaction_resource = TransactionResource()
@@ -25,4 +26,6 @@ urlpatterns = [
 
     url(r'^api/', include(account_resource.urls)),
     url(r'^api/', include(transaction_resource.urls)),
+
+    url(r'^$', AccountListView.as_view(), name='account-list'),
 ]

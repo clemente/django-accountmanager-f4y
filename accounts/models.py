@@ -42,3 +42,21 @@ class Transaction(models.Model):
     # - currency_date: timestamp of the currency rate used for the transaction
     creation_date = models.DateTimeField(auto_now_add=True) # Probably the same as "date" (except for DB migrations, etc.), but it's safe to store both
 
+    def clean(self):
+        if self.op_type=='dep':
+            if self.source_amount or not self.dest_amount:
+                raise ValidationError("Deposits must have just a destination amount")
+            if self.source_acc or not self.dest_acc:
+                raise ValidationError("Deposits must have just a destination account")
+        elif self.op_type=='wd':
+            if not self.source_amount or self.dest_amount:
+                raise ValidationError("Withdrawals must have just a source amount")
+            if not self.source_acc or self.dest_acc:
+                raise ValidationError("Withdrawals must have just a source account")
+        elif self.op_type=='tra':
+            if not self.source_amount or not self.dest_amount:
+                raise ValidationError("Transfers must have both amounts")
+            if not self.source_acc or not self.dest_acc:
+                raise ValidationError("Transfers must have both accounts")
+        else:
+            raise NotImplementedError(self.op_type)

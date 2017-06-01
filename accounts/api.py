@@ -1,5 +1,6 @@
 from tastypie.resources import ModelResource
 from tastypie.authorization import DjangoAuthorization, Authorization
+from tastypie.authentication import ApiKeyAuthentication
 from accounts.models import Account
 
 
@@ -9,7 +10,8 @@ class AccountResource(ModelResource):
     class Meta:
         queryset = Account.objects.all()
         resource_name = 'account'
-        authorization = Authorization() # FIXME use token authorization
+        authentication = ApiKeyAuthentication() # this requires HTTP header
+        authorization = Authorization() # authenticated user can modify everything
         always_return_data = True
 
     def dehydrate(self, bundle):

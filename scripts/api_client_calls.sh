@@ -1,3 +1,4 @@
+# Copy/paste lines from this file and change as needed
 
 echo "Creating an account:"
 

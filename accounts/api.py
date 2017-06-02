@@ -2,7 +2,7 @@ from tastypie.resources import ModelResource
 from tastypie.authorization import DjangoAuthorization, Authorization
 from tastypie.authentication import ApiKeyAuthentication
 from tastypie.validation import Validation
-from accounts.models import Account, Transaction
+from accounts.models import Account, Transaction, ALLOWED_CURRENCIES
 from accounts.currency import currency_rate
 import datetime
 from decimal import Decimal
@@ -14,11 +14,64 @@ ERROR_CODES = {
     'm_destacc': "Missing destination account",
     'm_srcacc': "Missing source account",
     'm_am': "Missing amount",
+    'm_cur': "Missing currency",
+    'nf_cur': "Currency not supported",
     'nf_acc': "Account doesn't exist",
     'z_srcacc': "Source account would have negative balance",
     'z_destacc': "Destination account would have negative balance",
+    'no_same': "Can't transfer to same account",
+    'no_number': "Not a valid number",
 }
 
+def extract_error_code_from_bundle(errors):
+    """From a tastypie "errors" dict, return the error code of 1 error message. It returns error code (not message) from our table. It discards other errors if there are >1. It can handle different input formats."""
+    # Normalize errors. The ones from validator are "{transactions: {…}}", the ones from obj_create are "{…}", the ones from models are "{error:…}"
+    # print(type(errors))
+    # print(errors)
+    if 'transactions' in errors:
+        errors=errors['transactions']
+    elif 'accounts' in errors:
+        errors=errors['accounts']
+    elif 'error' in errors:
+        errors=errors['error']
+    # print(type(errors))
+    # print(errors)
+    if isinstance(errors,dict):
+        # the "errors" dict could have many errors but our response format mandates to tell only one. So we take any of them
+        error_msg=next(iter(errors.values())) # details: https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
+    elif isinstance(errors,str):
+        error_msg=re.sub("^\['","",errors)
+        error_msg=re.sub("'\]$","",error_msg)
+    else:
+        raise NotImplementedError()
+
+    assert isinstance(error_msg,str) # We have 1 and only 1 message
+        
+
+    #import ipdb; ipdb.set_trace()
+
+    codes_for_msg=[k for k,v in ERROR_CODES.items() if v==error_msg] # find key for the given value. It's a dictionary access in reverse. 
+    if len(codes_for_msg)!=1:
+        raise NotImplementedError("Error message '%s' has no short code defined. Check api.py. %s"%(error_msg,codes_for_msg))
+    
+    error_code=codes_for_msg[0]
+
+    return error_code
+
+
+
+class AccountInputValidation(Validation):
+    def is_valid(self, bundle, request=None):
+        """Check validity of input parameters."""
+        # This runs at an early step in tastypie
+        errors = {}
+        if not bundle.data:
+            return {'__all__': 'Missing parameters'}
+        if 'currency' not in bundle.data:
+            errors['currency']="Missing currency"
+        elif bundle.data['currency'] not in [k for k,v in ALLOWED_CURRENCIES]:
+            errors['currency']="Currency not supported"
+        return errors
 
 # e.g. http://127.0.0.1:8000/api/account/?format=json
 # See scripts/api_client_calls.sh to test this
@@ -29,13 +82,28 @@ class AccountResource(ModelResource):
         authentication = ApiKeyAuthentication() # this requires HTTP header
         authorization = Authorization() # authenticated user can modify everything
         always_return_data = True
+        validation = AccountInputValidation()
+
 
     def dehydrate(self, bundle):
         """Create the appropriate response, e.g. include an "error" attribute in the response"""
-        # TODO add nice error handling (and set error=True). E.g. invalid currency
+
+        bundle.data['accountNumber']=bundle.data.pop('number') # rename key
         orig_data=dict(bundle.data)
         bundle.data={'error':False, 'data':orig_data}
         return bundle
+
+    def error_response(self, request, errors, response_class=None):
+        """Wrap the original error handler in order to change the message format according to the requirements"""
+
+        error_code=extract_error_code_from_bundle(errors)
+
+        errors={"error": True, "code": error_code, "message": ERROR_CODES[error_code]}
+
+        # continue normally but with our dict
+        res=super(AccountResource,self).error_response(request, errors, response_class)
+
+        return res
 
 
 class TransactionInputValidation(Validation):
@@ -51,9 +119,13 @@ class TransactionInputValidation(Validation):
             errors['destAccount']="Missing destination account"
         if 'sourceAccount' not in bundle.data:
             errors['sourceAccount']="Missing source account"
+
         if 'amount' not in bundle.data:
             errors['amount']="Missing amount"
-        # TODO parse the amount and check it's a float
+        elif isinstance(bundle.data['amount'],(float,int)):
+            pass
+        elif not bundle.data['amount'].replace('.','',1).isdigit():
+            errors['amount']="Not a valid number"
 
         #print("Returning errors:",errors)
 
@@ -119,7 +191,9 @@ class TransactionResource(ModelResource):
                     bundle.errors['destAccount']="Account doesn't exist"
                 if not source_acc:
                     bundle.errors['sourceAccount']="Account doesn't exist"
-                # TODO check dest!=source
+                if dest_acc and source_acc and dest_acc==source_acc:
+                    bundle.errors['destAccount']="Can't transfer to same account"
+
                 bundle.obj.source_acc=source_acc
                 bundle.obj.dest_acc=dest_acc
                 # The given amount is always written as source amount. The destination amount, however, can be computed
@@ -145,11 +219,11 @@ class TransactionResource(ModelResource):
             # if not valid, the save() will not save it
             pass
 
+        # This will check validity before saving and will return error if it finds any problem
         return self.save(bundle)
 
     def dehydrate(self, bundle):
         """Create the appropriate response, e.g. include an "error" attribute in the response"""
-        # TODO add more error handling (and set error=True). E.g. invalid amount
         bundle.data['transactionId']=bundle.data.pop('id') # rename key
         orig_data=dict(bundle.data)
         bundle.data={'error':False, 'data':orig_data}
@@ -157,37 +231,10 @@ class TransactionResource(ModelResource):
 
     def error_response(self, request, errors, response_class=None):
         """Wrap the original error handler in order to change the message format according to the requirements"""
-        # Normalize errors. The ones from validator are "{transactions: {…}}", the ones from obj_create are "{…}", the ones from models are "{error:…}"
-        # print(type(errors))
-        # print(errors)
-        if 'transactions' in errors:
-            errors=errors['transactions']
-        elif 'error' in errors:
-            errors=errors['error']
-        # print(type(errors))
-        # print(errors)
-        if isinstance(errors,dict):
-            # the "errors" dict could have many errors but our response format mandates to tell only one. So we take any of them
-            error_msg=next(iter(errors.values())) # details: https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
-        elif isinstance(errors,str):
-            error_msg=re.sub("^\['","",errors)
-            error_msg=re.sub("'\]$","",error_msg)
-        else:
-            raise NotImplementedError()
-
-        assert isinstance(error_msg,str) # We have 1 and only 1 message
-            
-
-        #import ipdb; ipdb.set_trace()
-
-        codes_for_msg=[k for k,v in ERROR_CODES.items() if v==error_msg] # find key for the given value. It's a dictionary access in reverse. 
-        if len(codes_for_msg)!=1:
-            raise NotImplementedError("Error message '%s' has no short code defined. Check api.py. %s"%(error_msg,codes_for_msg))
-        
-        error_code=codes_for_msg[0]
+        error_code=extract_error_code_from_bundle(errors)
 
         # rewrite the error dict
-        errors={"error": True, "code": error_code, "message": error_msg}
+        errors={"error": True, "code": error_code, "message": ERROR_CODES[error_code]}
 
         # continue normally but with our dict
         res=super(TransactionResource,self).error_response(request, errors, response_class)

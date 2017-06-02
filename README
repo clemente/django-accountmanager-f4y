@@ -1,0 +1,28 @@
+This is my submission to implement the account manager.
+2-june-2017 Daniel Clemente Laboreo. n142857@gmail.com
+
+
+It's done in Django and Python3.
+It includes the git log.
+
+
+Instructions to run it:
+
+1. Create a virtualenv:
+
+virtualenv env
+source env/bin/activate
+
+
+2. Install requirements
+pip3 install -r requirements.txt
+
+
+3. Create new database if you want. If you use mine, you'll be able to log in to admin with: dc:password_set_in_admin
+
+
+4. ./manage.py runserver   and visit http://127.0.0.1:8000/
+
+
+5. Use the code inside scripts/api_client_calls.sh to test the API client. Change parameters manually
+

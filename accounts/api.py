@@ -87,6 +87,7 @@ class AccountResource(ModelResource):
 
     def dehydrate(self, bundle):
         """Create the appropriate response, e.g. include an "error" attribute in the response"""
+        # The result produced contains much more information than requested in the requirements, but the requested information in the right place, and the user can ignore the rest
 
         bundle.data['accountNumber']=bundle.data.pop('number') # rename key
         orig_data=dict(bundle.data)

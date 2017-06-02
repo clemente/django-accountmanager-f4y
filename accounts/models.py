@@ -34,11 +34,11 @@ class Account(models.Model):
 
     def save(self):
         if not self.number:
-            # Give sequential IDs automatically
+            # Give sequential IDs automatically. 8 digits!
             try:
                 self.number = Account.objects.latest('number').number+1
             except Account.DoesNotExist:
-                self.number = 1
+                self.number = 1E7 # "one, and seven zeros"
         super(Account, self).save()
 
 class Transaction(models.Model):

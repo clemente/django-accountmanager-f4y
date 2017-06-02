@@ -13,6 +13,9 @@ OPERATION_TYPES = [
     ("wd", "Withdrawal (take money)"),
     ("tra", "Transfer (move money)"), # with same or different currency
 ]
+# For consistent use of numbers representing currency amounts: 00111222333.12345
+MONEY_MAX_DIGITS=12+5
+MONEY_DECIMAL_PLACES=5
 
 def validate_8digits(number):
     if not (10000000 <= number <= 99999999):
@@ -23,7 +26,7 @@ class Account(models.Model):
     currency = models.CharField(max_length=3,choices=ALLOWED_CURRENCIES)
     creation_date = models.DateTimeField(auto_now_add=True)
     # To store the current balance there are safer ways. E.g. We could store the balance after EACH operation, not only the current one. Then we would also need to verify that all partial balances match. I did this for other project, and it's a lot of validations; more than what this demo requires. So I save just the latest balance
-    balance = models.FloatField(help_text="Latest balance",default=0,blank=False,null=False) # TODO use something better than float, to avoid   + 9.278099999999998 USD 
+    balance = models.DecimalField(max_digits=MONEY_MAX_DIGITS,decimal_places=MONEY_DECIMAL_PLACES,help_text="Latest balance",default=0,blank=False,null=False)
 
     def __str__(self):
         return "Account number %i"%self.number
@@ -46,8 +49,8 @@ class Transaction(models.Model):
     op_type = models.CharField(max_length=3,choices=OPERATION_TYPES,verbose_name="Operation type",) # stored as field so that we know which fields should be null/not-null without having to detect it
     source_acc = models.ForeignKey(Account,blank=True,null=True,verbose_name="Source account",help_text="Used in transfers; must be blank for deposits",related_name="transactions_with_this_source")
     dest_acc = models.ForeignKey(Account,blank=True,null=True,verbose_name="Destination account",help_text="Used in transfers; must be blank for withdrawals",related_name="transactions_with_this_dest")
-    source_amount = models.FloatField(help_text="Amount in source account's currency, or in withdrawal account's currency. Not used in deposits", blank=True, null=True)
-    dest_amount = models.FloatField(help_text="Amount in destination account's currency, or in deposit account's currency. Not used in withdrawals", blank=True, null=True)
+    source_amount = models.DecimalField(max_digits=MONEY_MAX_DIGITS,decimal_places=MONEY_DECIMAL_PLACES,help_text="Amount in source account's currency, or in withdrawal account's currency. Not used in deposits", blank=True, null=True)
+    dest_amount = models.DecimalField(max_digits=MONEY_MAX_DIGITS,decimal_places=MONEY_DECIMAL_PLACES,help_text="Amount in destination account's currency, or in deposit account's currency. Not used in withdrawals", blank=True, null=True)
     # I don't implement (because not required):
     # - currency_rate: official money exchange rate used in this transaction. Can be computed approximately by dividing source_amount/dest_amount
     # - currency_date: timestamp of the currency rate used for the transaction

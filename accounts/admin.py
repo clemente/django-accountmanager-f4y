@@ -2,7 +2,7 @@ from django.contrib import admin
 from accounts.models import Account, Transaction
 
 class AccountAdmin(admin.ModelAdmin):
-    list_display = ('number', 'currency', 'creation_date')
+    list_display = ('number', 'currency', 'creation_date', 'balance')
 
 
 class TransactionAdmin(admin.ModelAdmin):

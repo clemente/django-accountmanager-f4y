@@ -5,6 +5,8 @@ from tastypie.validation import Validation
 from accounts.models import Account, Transaction
 from accounts.currency import currency_rate
 import datetime
+from decimal import Decimal
+import re
 
 
 ERROR_CODES = {
@@ -13,6 +15,8 @@ ERROR_CODES = {
     'm_srcacc': "Missing source account",
     'm_am': "Missing amount",
     'nf_acc': "Account doesn't exist",
+    'z_srcacc': "Source account would have negative balance",
+    'z_destacc': "Destination account would have negative balance",
 }
 
 
@@ -73,7 +77,7 @@ class TransactionResource(ModelResource):
         # Only try to find accounts etc. if the parameters are valid (they exist, valid format, …)
         if self.is_valid(bundle):
 
-            # Validator will already checked this:
+            # Validator already checked this, so our usage is safe
             assert 'sourceAccount' in bundle.data
             assert 'destAccount' in bundle.data
             assert 'amount' in bundle.data
@@ -87,6 +91,7 @@ class TransactionResource(ModelResource):
                 source_acc=Account.objects.get(number=bundle.data['sourceAccount'])
             except Account.DoesNotExist:
                 source_acc=None
+            amount=Decimal(bundle.data['amount'])
     
             # Depending on transaction type, fill some data or other. Also, require different data
             if bundle.data['sourceAccount'] is None:
@@ -95,8 +100,7 @@ class TransactionResource(ModelResource):
                 if not dest_acc:
                     bundle.errors['destAccount']="Account doesn't exist"
                 bundle.obj.dest_acc=dest_acc
-                bundle.obj.dest_amount=bundle.data['amount']
-                #bundle.data['dest_amount']=bundle.data['amount']
+                bundle.obj.dest_amount=amount
                 bundle.obj.source_acc=None
                 bundle.obj.source_amount=None
     
@@ -105,7 +109,7 @@ class TransactionResource(ModelResource):
                 if not source_acc:
                     bundle.errors['sourceAccount']="Account doesn't exist"
                 bundle.obj.source_acc=source_acc
-                bundle.obj.source_amount=bundle.data['amount']
+                bundle.obj.source_amount=amount
                 bundle.obj.dest_acc=None
                 bundle.obj.dest_amount=None
     
@@ -119,14 +123,15 @@ class TransactionResource(ModelResource):
                 bundle.obj.source_acc=source_acc
                 bundle.obj.dest_acc=dest_acc
                 # The given amount is always written as source amount. The destination amount, however, can be computed
-                bundle.obj.source_amount=bundle.data['amount']
+                bundle.obj.source_amount=amount
                 if source_acc and dest_acc and source_acc.currency != dest_acc.currency:
                     #rate=0.5
                     rate=currency_rate(source_acc.currency,dest_acc.currency)
-                    bundle.obj.dest_amount=float(bundle.data['amount'])*rate
+                    rate=Decimal(rate)
+                    bundle.obj.dest_amount=amount*rate
                 else:
                     # same currency (or nulls)
-                    bundle.obj.dest_amount=bundle.data['amount']
+                    bundle.obj.dest_amount=amount
     
             else:
                 raise Exception("check validator")
@@ -152,14 +157,29 @@ class TransactionResource(ModelResource):
 
     def error_response(self, request, errors, response_class=None):
         """Wrap the original error handler in order to change the message format according to the requirements"""
-        # Normalize errors. The ones from validator are "transactions: {…}", the ones from obj_create are "{…}"
+        # Normalize errors. The ones from validator are "{transactions: {…}}", the ones from obj_create are "{…}", the ones from models are "{error:…}"
+        # print(type(errors))
+        # print(errors)
         if 'transactions' in errors:
             errors=errors['transactions']
+        elif 'error' in errors:
+            errors=errors['error']
+        # print(type(errors))
+        # print(errors)
+        if isinstance(errors,dict):
+            # the "errors" dict could have many errors but our response format mandates to tell only one. So we take any of them
+            error_msg=next(iter(errors.values())) # details: https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
+        elif isinstance(errors,str):
+            error_msg=re.sub("^\['","",errors)
+            error_msg=re.sub("'\]$","",error_msg)
+        else:
+            raise NotImplementedError()
+
+        assert isinstance(error_msg,str) # We have 1 and only 1 message
+            
 
         #import ipdb; ipdb.set_trace()
 
-        # the "errors" dict could have many errors but our response format mandates to tell only one. So we take any of them
-        error_msg=next(iter(errors.values())) # details: https://stackoverflow.com/questions/3097866/access-an-arbitrary-element-in-a-dictionary-in-python
         codes_for_msg=[k for k,v in ERROR_CODES.items() if v==error_msg] # find key for the given value. It's a dictionary access in reverse. 
         if len(codes_for_msg)!=1:
             raise NotImplementedError("Error message '%s' has no short code defined. Check api.py. %s"%(error_msg,codes_for_msg))

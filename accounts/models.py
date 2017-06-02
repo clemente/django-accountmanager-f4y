@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.db import transaction
 
 
 ALLOWED_CURRENCIES = [
@@ -75,8 +76,9 @@ class Transaction(models.Model):
         else:
             raise NotImplementedError(self.op_type)
 
+    @transaction.atomic
     def save(self, *args, **kwargs):
-        """After saving a transaction, modify the affected accounts to compute the new balance"""
+        """After saving a transaction, modify the affected accounts to compute the new balance. If any account modification fails, transaction can't be saved"""
         super(Transaction, self).save(*args, **kwargs)
         if self.op_type=='wd':
             assert self.source_amount>0
@@ -96,4 +98,10 @@ class Transaction(models.Model):
             self.dest_acc.save()
         else:
             raise NotImplementedError(self.op_type)
+
+        # if any forbidden state arises, fail and undo (rollback) all saves (both for transaction and account changes)
+        if self.source_acc and self.source_acc.balance<=0:
+            raise ValidationError(["Source account would have negative balance"])
+        if self.dest_acc and self.dest_acc.balance<=0:
+            raise ValidationError("Destination account would have negative balance")
 

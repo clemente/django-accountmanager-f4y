@@ -22,6 +22,7 @@ ERROR_CODES = {
     'no_same': "Can't transfer to same account",
     'no_number': "Not a valid number",
     'no_zero': "Amount cannot be zero",
+    'e_netw': "Connection to get currency rates failed",
 }
 
 def extract_error_code_from_bundle(errors):

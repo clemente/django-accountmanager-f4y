@@ -17,8 +17,12 @@ def currency_rate(source,dest):
     # We need to set source=1 and ask only about the dest. currency
     # e.g. "tell me the destination currency, in my terms"
     params = {'base': source, 'symbols': dest}
-    r = requests.get('http://api.fixer.io/latest', params=params)
-    r = r.json()
+    try:
+        r = requests.get('http://api.fixer.io/latest', params=params)
+        r = r.json()
+    except requests.exceptions.ConnectionError:
+        raise Exception("Connection to get currency rates failed")
+
     rate = r['rates'][dest]
     #print("Returning rate: 1 %s == %f %s"%(source,rate,dest))
     return rate

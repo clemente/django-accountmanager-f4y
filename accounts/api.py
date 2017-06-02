@@ -3,6 +3,7 @@ from tastypie.authorization import DjangoAuthorization, Authorization
 from tastypie.authentication import ApiKeyAuthentication
 from tastypie.validation import Validation
 from accounts.models import Account, Transaction
+from accounts.currency import currency_rate
 import datetime
 
 
@@ -13,6 +14,7 @@ ERROR_CODES = {
     'm_am': "Missing amount",
     'nf_acc': "Account doesn't exist",
 }
+
 
 # e.g. http://127.0.0.1:8000/api/account/?format=json
 # See scripts/api_client_calls.sh to test this
@@ -113,14 +115,16 @@ class TransactionResource(ModelResource):
                     bundle.errors['destAccount']="Account doesn't exist"
                 if not source_acc:
                     bundle.errors['sourceAccount']="Account doesn't exist"
+                # TODO check dest!=source
                 bundle.obj.source_acc=source_acc
                 bundle.obj.dest_acc=dest_acc
                 # The given amount is always written as source amount. The destination amount, however, can be computed
                 bundle.obj.source_amount=bundle.data['amount']
                 # FIXME detect intercurrency transfers and store different amounts
                 if source_acc and dest_acc and source_acc.currency != dest_acc.currency:
-                    RATE=0.5
-                    bundle.obj.dest_amount=float(bundle.data['amount'])*RATE
+                    #rate=0.5
+                    rate=currency_rate(source_acc.currency,dest_acc.currency)
+                    bundle.obj.dest_amount=float(bundle.data['amount'])*rate
                 else:
                     # same currency (or nulls)
                     bundle.obj.dest_amount=bundle.data['amount']

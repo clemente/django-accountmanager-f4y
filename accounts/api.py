@@ -83,6 +83,7 @@ class AccountResource(ModelResource):
         authorization = Authorization() # authenticated user can modify everything
         always_return_data = True
         validation = AccountInputValidation()
+        allowed_methods = ['post'] # limit to our requirements
 
 
     def dehydrate(self, bundle):
@@ -141,6 +142,7 @@ class TransactionResource(ModelResource):
         authorization = Authorization()
         validation = TransactionInputValidation()
         always_return_data = True
+        allowed_methods = ['post'] # limit to our requirements
 
 
     def obj_create(self, bundle, request=None, **kwargs):

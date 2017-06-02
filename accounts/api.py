@@ -120,7 +120,6 @@ class TransactionResource(ModelResource):
                 bundle.obj.dest_acc=dest_acc
                 # The given amount is always written as source amount. The destination amount, however, can be computed
                 bundle.obj.source_amount=bundle.data['amount']
-                # FIXME detect intercurrency transfers and store different amounts
                 if source_acc and dest_acc and source_acc.currency != dest_acc.currency:
                     #rate=0.5
                     rate=currency_rate(source_acc.currency,dest_acc.currency)

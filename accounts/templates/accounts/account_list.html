@@ -1,7 +1,7 @@
 <h1>Accounts</h1>
 {% for account in object_list %}
 <h2><a href="{% url 'account-detail' account.number %}">Account {{ account.number }}</a></h2>
-<p>Currency: {{account.currency}}</p>
+<p>Currency: {{account.currency}}. Current balance: {{account.balance}} {{account.currency}}</p>
 {# <p>{{ account.creation_date|date }}</p> #}
 
 {% empty %}

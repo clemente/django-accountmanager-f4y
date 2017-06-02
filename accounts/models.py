@@ -22,6 +22,8 @@ class Account(models.Model):
     number = models.PositiveIntegerField(help_text="Account number, 8 digits",unique=True,blank=True,null=False,validators=[validate_8digits])
     currency = models.CharField(max_length=3,choices=ALLOWED_CURRENCIES)
     creation_date = models.DateTimeField(auto_now_add=True)
+    # To store the current balance there are safer ways. E.g. We could store the balance after EACH operation, not only the current one. Then we would also need to verify that all partial balances match. I did this for other project, and it's a lot of validations; more than what this demo requires. So I save just the latest balance
+    balance = models.FloatField(help_text="Latest balance",default=0,blank=False,null=False) # TODO use something better than float, to avoid   + 9.278099999999998 USD 
 
     def __str__(self):
         return "Account number %i"%self.number
@@ -69,3 +71,26 @@ class Transaction(models.Model):
                 raise ValidationError("Transfers must have both accounts")
         else:
             raise NotImplementedError(self.op_type)
+
+    def save(self, *args, **kwargs):
+        """After saving a transaction, modify the affected accounts to compute the new balance"""
+        super(Transaction, self).save(*args, **kwargs)
+        if self.op_type=='wd':
+            assert self.source_amount>0
+            self.source_acc.balance-=self.source_amount
+            self.source_acc.save()
+        elif self.op_type=='dep':
+            assert self.dest_amount>0
+            self.dest_acc.balance+=self.dest_amount
+            self.dest_acc.save()
+        elif self.op_type=='tra':
+            # this is a combination of wd+dep, but I write it for clarity
+            assert self.source_amount>0
+            assert self.dest_amount>0
+            self.source_acc.balance-=self.source_amount
+            self.source_acc.save()
+            self.dest_acc.balance+=self.dest_amount
+            self.dest_acc.save()
+        else:
+            raise NotImplementedError(self.op_type)
+

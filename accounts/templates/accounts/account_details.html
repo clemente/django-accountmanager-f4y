@@ -1,8 +1,21 @@
+<html>
+<head>
+<style>
+td.neg { color: #a00;}
+</style>
+</head>
+<body>
 
-<h1>Transactions for account {{account.number}}</h1>
+<h1>Transactions for account {{account.number}} ({{account.currency}})</h1>
 
 <table border="1" cellspacing="0" cellpadding="5">
-{% for tr in transactions %}
+<tr>
+  <th>Date</th>
+  <th>Concept</th>
+  <th>Change</th>
+  <th>Balance</th>
+<tr>
+{% for tr,amounts in transactions_and_amountscolumns %}
 <tr>
   <td>{{tr.date}}</td>
   <td>Tr. {{tr.id}}:
@@ -22,16 +35,12 @@
 	{% else %}Unknown{% endif %}
 </td>
   <!-- <td>~ {{tr.source_amount}}, {{tr.dest_amount}} ~</td> -->
+  <td class="{% if amounts.change < 0 %}neg{% endif %}">
+	{% if amounts.change > 0 %}+{% endif %}{{amounts.change}}
+	{{account.currency}}
+  </td>
   <td>
-	{% if tr.op_type == 'tra' and tr.source_acc == account %}
-	- {{tr.source_amount}}
-	{% elif tr.op_type == 'tra' and tr.dest_acc == account %}
-	+ {{tr.dest_amount}}
-	{% elif tr.op_type == 'wd' %}
-	- {{tr.source_amount}}
-	{% elif tr.op_type == 'dep' %}
-	+ {{tr.dest_amount}}
-	{% endif %}
+	{{amounts.accum}}
 	{{account.currency}}
   </td>
 {% empty %}
@@ -40,3 +49,5 @@
 </table>
 
 <p>Current balance: {{account.balance}} {{account.currency}}</p>
+</body>
+</html>

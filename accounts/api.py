@@ -21,6 +21,7 @@ ERROR_CODES = {
     'z_destacc': "Destination account would have negative balance",
     'no_same': "Can't transfer to same account",
     'no_number': "Not a valid number",
+    'no_zero': "Amount cannot be zero",
 }
 
 def extract_error_code_from_bundle(errors):
@@ -167,6 +168,9 @@ class TransactionResource(ModelResource):
             except Account.DoesNotExist:
                 source_acc=None
             amount=Decimal(bundle.data['amount'])
+
+            if amount==0:
+                bundle.errors['amount']="Amount cannot be zero"
     
             # Depending on transaction type, fill some data or other. Also, require different data
             if bundle.data['sourceAccount'] is None:

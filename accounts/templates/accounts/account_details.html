@@ -9,8 +9,12 @@
 	{# description: #}
 	{% if tr.op_type == 'tra' and tr.source_acc == account %}
 	Transfer from this account (view <a href="{% url 'account-detail' tr.dest_acc.number %}">dest.</a>)
+	<br />
+	<small>Amount in destination: {{tr.dest_amount}} {{tr.dest_acc.currency}}</small>
 	{% elif tr.op_type == 'tra' and tr.dest_acc == account %}
 	Transfer to this account (view <a href="{% url 'account-detail' tr.source_acc.number %}">src.</a>)
+	<br />
+	<small>Amount in origin: {{tr.source_amount}} {{tr.source_acc.currency}}</*small>
 	{% elif tr.op_type == 'wd' %}
 	Withdrawal
 	{% elif tr.op_type == 'dep' %}

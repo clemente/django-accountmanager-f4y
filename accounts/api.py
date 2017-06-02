@@ -47,6 +47,7 @@ class TransactionInputValidation(Validation):
             errors['sourceAccount']="Missing source account"
         if 'amount' not in bundle.data:
             errors['amount']="Missing amount"
+        # TODO parse the amount and check it's a float
 
         #print("Returning errors:",errors)
 
@@ -114,9 +115,15 @@ class TransactionResource(ModelResource):
                     bundle.errors['sourceAccount']="Account doesn't exist"
                 bundle.obj.source_acc=source_acc
                 bundle.obj.dest_acc=dest_acc
-                # FIXME detect intercurrency transfers and store different amounts
+                # The given amount is always written as source amount. The destination amount, however, can be computed
                 bundle.obj.source_amount=bundle.data['amount']
-                bundle.obj.dest_amount=bundle.data['amount']
+                # FIXME detect intercurrency transfers and store different amounts
+                if source_acc and dest_acc and source_acc.currency != dest_acc.currency:
+                    RATE=0.5
+                    bundle.obj.dest_amount=float(bundle.data['amount'])*RATE
+                else:
+                    # same currency (or nulls)
+                    bundle.obj.dest_amount=bundle.data['amount']
     
             else:
                 raise Exception("check validator")
